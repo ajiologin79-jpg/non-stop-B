@@ -2,6 +2,7 @@ package com.stock.non_stop.controller;
 import com.stock.non_stop.dto.StockEntryDTO;
 import com.stock.non_stop.entity.Product;
 import com.stock.non_stop.entity.StockEntry;
+import com.stock.non_stop.repository.ProductRepository;
 import com.stock.non_stop.repository.StockRepository;
 import com.stock.non_stop.service.StockService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,19 +28,41 @@ public class StockController {
     @Autowired
     private StockRepository repo;
 
+    @Autowired
+    private ProductRepository productRepo;
+
     @GetMapping
     public List<StockEntry> getAll() {
         return repo.findAll();
     }
 
     @PostMapping
-    public StockEntry create(@RequestBody StockEntryDTO dto) {
+    public StockEntry createStock(StockEntryDTO dto) {
 
-        return service.createEntry(
-                dto.getProductId(),
-                dto.getOutQuantity(),
-                LocalDate.parse(dto.getDate())
-        );
+        Product product = productRepo.findById(dto.getProductId())
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        int total = product.getTotalQuantity();
+        int out = dto.getOutQuantity();
+
+        if (out > total) {
+            throw new RuntimeException("Stock exceeded");
+        }
+
+        int left = total - out;
+
+        // ✅ UPDATE PRODUCT STOCK
+        product.setTotalQuantity(left);
+        productRepo.save(product);
+
+        // ✅ SAVE STOCK ENTRY
+        StockEntry stock = new StockEntry();
+        stock.setProduct(product);
+        stock.setOutQuantity(out);
+        stock.setLeftInStock(left);
+        stock.setEntryDate(LocalDate.parse(dto.getDate()));
+
+        return repo.save(stock);
     }
 
     @GetMapping("/export")
