@@ -1,10 +1,11 @@
 package com.stock.non_stop.controller;
+
 import com.stock.non_stop.dto.StockEntryDTO;
 import com.stock.non_stop.entity.Product;
 import com.stock.non_stop.entity.StockEntry;
 import com.stock.non_stop.repository.ProductRepository;
 import com.stock.non_stop.repository.StockRepository;
-import com.stock.non_stop.service.StockService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,21 +24,20 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 public class StockController {
 
     @Autowired
-    private StockService service;
-
-    @Autowired
     private StockRepository repo;
 
     @Autowired
     private ProductRepository productRepo;
 
+    // ✅ GET ALL STOCK
     @GetMapping
     public List<StockEntry> getAll() {
         return repo.findAll();
     }
 
+    // ✅ CREATE STOCK (FIXED)
     @PostMapping
-    public StockEntry createStock(StockEntryDTO dto) {
+    public StockEntry createStock(@RequestBody StockEntryDTO dto) {
 
         Product product = productRepo.findById(dto.getProductId())
                 .orElseThrow(() -> new RuntimeException("Product not found"));
@@ -51,11 +51,11 @@ public class StockController {
 
         int left = total - out;
 
-        // ✅ UPDATE PRODUCT STOCK
+        // 🔥 UPDATE PRODUCT STOCK
         product.setTotalQuantity(left);
         productRepo.save(product);
 
-        // ✅ SAVE STOCK ENTRY
+        // 🔥 SAVE STOCK ENTRY
         StockEntry stock = new StockEntry();
         stock.setProduct(product);
         stock.setOutQuantity(out);
@@ -65,6 +65,7 @@ public class StockController {
         return repo.save(stock);
     }
 
+    // ✅ EXPORT EXCEL
     @GetMapping("/export")
     public void exportToExcel(HttpServletResponse response) throws IOException {
 
@@ -89,18 +90,20 @@ public class StockController {
             row.createCell(3).setCellValue(s.getLeftInStock());
         }
 
-        response.setContentType("application/octet-stream");
+        response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=stock.xlsx");
 
         workbook.write(response.getOutputStream());
         workbook.close();
     }
 
+    // ✅ DELETE
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         repo.deleteById(id);
     }
 
+    // ✅ UPDATE
     @PutMapping("/{id}")
     public StockEntry update(@PathVariable Long id, @RequestBody StockEntryDTO dto) {
 
